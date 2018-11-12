@@ -7,7 +7,7 @@ Set of notebooks of Python numpy.random, MNIST, Iris and Digit recognition scrip
 * Jupyter notebooks
   * Numpy random
   * Iris dataset
-  * [MNIST database](##MNIST-database)
+  * [MNIST database](#MNIST-database)
   * Notebook explaining the digit recognition script
 
 # How to run
@@ -21,6 +21,6 @@ The MNIST database is a collection of handwritten images which are used to train
 
 The training imeages file contains 60000 images and the test images file contains 10000 images. These files are in a special format therefore they have to be read byte by byte.
 
-[Link for notebook](notebooks\MNIST_database.ipynb)
+[Link for notebook](/notebooks/MNIST_database.ipynb)
 
 [Link for MNIST database documentation](http://yann.lecun.com/exdb/mnist/)
