@@ -3,11 +3,13 @@ import io
 from urllib.request import urlopen
 from pathlib import Path
 import numpy as np
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
 
 
 class DigitRecognition:
 
-    def openOrDownloadAndOpenGzipFile(self, file_name, url):
+    def openOrDownloadAndOpenGzipFile(self, file_name: str, url: str)->str:
         """
         Checks if the given file exists, if it doesnt then downloads from the given url
         """
@@ -25,7 +27,7 @@ class DigitRecognition:
         with gzip.open(io.BytesIO(to_read), 'rb') as f:
             return f.read()
 
-    def loadRawFiles(self):
+    def loadRawFiles(self)->None:
         """
         Unzip the training and test data
         """
@@ -66,6 +68,12 @@ class DigitRecognition:
         self.test_images, self.test_labels, test_item_number = self.readImagesAndLabels(
             self.test_images_raw, self.test_labels_raw)
 
+        # Clean up raw data
+        self.test_images_raw = None
+        self.test_labels_raw = None
+        self.train_images_raw = None
+        self.train_labels_raw = None
+
     def getImageAndLabelMetaData(self, images_raw, labels_raw):
         """
         Checks if the magic numbers are correct and reads in the first set of bites of the files.
@@ -105,18 +113,17 @@ class DigitRecognition:
         print('Number of Labels: %d' % label_number)
         return pictures_number, columns_number, rows_number, label_number
 
-    def loadPicturesAndLabelsToArrays(self, picture_file_content, pictures_number, columns_number, rows_number, pictures_offset, label_file_content, labels_offset):
+    def loadPicturesAndLabelsToArrays(self, picture_file_content, pictures_number: int, columns_number: int, rows_number: int, pictures_offset: int, label_file_content, labels_offset: int):
         """
         Loads a set of pictures and labels into two arrays.
         The number of pictures and labels has to match
+        The method does not reads in each picture flat as columns_number*rows_number.
         """
         # Set up an array for picture storage
         pictures = np.zeros(
-            (pictures_number, rows_number, columns_number), dtype=int)
+            (pictures_number, columns_number*rows_number), dtype=float)
         labels = np.zeros(
             (pictures_number), dtype=int)
-        # The current row a picture 1-28
-        current_row = 1
         # The current picture 1-59999
         current_image = 0
         # The iteration index
@@ -125,27 +132,63 @@ class DigitRecognition:
               pictures_number)
         # Run a loop until the end of the byte array
         while i < len(picture_file_content):
-            # Convert a row to int types
-            a = [c for c in picture_file_content[i:i+columns_number]]
-            # Set the row the current picture
-            pictures[current_image][current_row-1] = a
-            # Go to next row
-            current_row += 1
-            # If the current row is the same as the size of the rows
-            if(current_row > rows_number):
-                # Set the row to number 1
-                current_row = 1
-                # Read in the label for this image
-                labels[current_image] = int.from_bytes(
-                    label_file_content[current_image+labels_offset:current_image+labels_offset+1], byteorder='big')
-                # Go to the next picture
-                current_image += 1
-
+            # Convert a row to float types and normalise it for better machine learning performance
+            a = [c/255 for c in picture_file_content[i:i+columns_number*rows_number]]
+            # Set the current picture
+            pictures[current_image] = a
+            # Read in the label for this image
+            labels[current_image] = int.from_bytes(
+                label_file_content[current_image+labels_offset:current_image+labels_offset+1], byteorder='big')
+            # Go to the next picture
+            current_image += 1
             # Increase the counter with the size of the columns
-            i += columns_number
+            i += columns_number*rows_number
         return pictures, labels
+
+    def prepareMachineLearningModel(self, model, limited: bool):
+        """
+        Trains a machine learnong model and calculates accuracy score.
+        Prediction is done with 100 test items if limited is on.
+        When limited is off then prediction will be done with 10000 items. It can take long time to finish 
+        """
+        # Check if the model has precit method
+        predict = getattr(model, "predict", None)
+        if callable(predict):
+            # Set the current model to previous model
+            self.model = model
+            # Train the model
+            print("Training model :", model)
+            model.fit(self.train_images, self.train_labels)
+            print("Predicting")
+            # Predict test data
+            pred = model.predict(
+                self.test_images[0: 100] if limited == True else self.test_images)
+            print("Calculating accuracy score")
+            # Calculate accuracy
+            acc_knn = accuracy_score(
+                self.test_labels[0: 100] if limited == True else self.test_labels, pred)
+            print("Model prediction accuracy: %f" % acc_knn)
+        else:
+            print("Provided model does not have predict method!")
+
+    def predictWithPreviousModel(self, toBePredicted):
+        """
+        Tryes to predict a number from the input.
+        If there a model is not set yet. It raises and exception
+        """
+        # Check if a model was loaded
+        if hasattr(self, 'model'):
+            predicted = self.model.predict(toBePredicted)
+            print("Predicted: ", predicted)
+            return predicted
+        else:
+            raise Exception(
+                "Call prepareMachineLearningModel before predictWithPreviousModel")
 
 
 dr = DigitRecognition()
 dr.loadRawFiles()
 dr.readTrainingAndTestData()
+dr.prepareMachineLearningModel(KNeighborsClassifier(), True)
+dr.predictWithPreviousModel([dr.test_images[9999]])
+print(dr.test_labels[9999])
