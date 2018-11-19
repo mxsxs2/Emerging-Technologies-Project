@@ -11,11 +11,24 @@ import matplotlib.pyplot as plt
 
 class DigitRecognition:
 
+    def __init__(self, verbose: bool = True, load_test_data: bool = True, check_accuracy: bool = True):
+        """
+        Constructor of class.
+        verbose: extra details are printed about the files
+        load_test_data: to load the validation data into memory or not
+        check_accuracy: to check the accuracy of the machine learning method or not
+        """
+        self.verbose = verbose
+        self.load_test_data = load_test_data
+        self.check_accuracy = check_accuracy
+
     def openOrDownloadAndOpenGzipFile(self, file_name: str, url: str)->str:
         """
         Checks if the given file exists, if it doesnt then downloads from the given url
         """
-        print('Checking %s' % file_name)
+        if self.verbose:
+            print('Checking %s' % file_name)
+
         file = Path(file_name)
         # Check if the file exist
         if(file.is_file() != True):
@@ -37,11 +50,12 @@ class DigitRecognition:
             'data/train-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz')
         self.train_labels_raw = self.openOrDownloadAndOpenGzipFile(
             'data/train-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz')
-        self.test_images_raw = self.openOrDownloadAndOpenGzipFile(
-            'data/t10k-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz')
-        self.test_labels_raw = self.openOrDownloadAndOpenGzipFile(
-            'data/t10k-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz')
-        print("Train and test data loaded.")
+        if self.load_test_data:
+            self.test_images_raw = self.openOrDownloadAndOpenGzipFile(
+                'data/t10k-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz')
+            self.test_labels_raw = self.openOrDownloadAndOpenGzipFile(
+                'data/t10k-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz')
+        print("Data files loaded.")
 
     def readImagesAndLabels(self, images_raw, labels_raw):
         """
@@ -66,9 +80,10 @@ class DigitRecognition:
         print("\nReading training images and labels into arrays")
         self.train_images, self.train_labels, train_item_number = self.readImagesAndLabels(
             self.train_images_raw, self.train_labels_raw)
-        print("\nReading test images and labels into arrays")
-        self.test_images, self.test_labels, test_item_number = self.readImagesAndLabels(
-            self.test_images_raw, self.test_labels_raw)
+        if self.load_test_data:
+            print("\nReading test images and labels into arrays")
+            self.test_images, self.test_labels, test_item_number = self.readImagesAndLabels(
+                self.test_images_raw, self.test_labels_raw)
 
         # Clean up raw data
         self.test_images_raw = None
@@ -80,39 +95,52 @@ class DigitRecognition:
         """
         Checks if the magic numbers are correct and reads in the first set of bites of the files.
         """
-        print("\nMeta data of pictures file:")
+        if self.verbose:
+            print("Meta data of pictures file:")
+
         # Confirm if the first four byteis 2051
         is_it_the_right_bytes = int.from_bytes(
             images_raw[0:4], byteorder='big') == 2051
         # Throw exception if wrong file provided
         if is_it_the_right_bytes == False:
             raise Exception("The provided file is not MNIST pictures file")
-        print('Is the magic number correct: %r' % is_it_the_right_bytes)
+        if self.verbose:
+            print('Is the magic number correct: %r' % is_it_the_right_bytes)
+
         # Number of pictures should be from bytes 4 to 8 and should be read in big endian
         pictures_number = int.from_bytes(
             images_raw[4:8], byteorder='big')
-        print('Number of pictures: %d' % pictures_number)
+        if self.verbose:
+            print('Number of pictures: %d' % pictures_number)
+
         # Number of rows should be from 8 to 12
         rows_number = int.from_bytes(
             images_raw[8:12], byteorder='big')
-        print('Number of rows: %d' % rows_number)
+        if self.verbose:
+            print('Number of rows: %d' % rows_number)
+
         # Number of columns should be from 12 to 16
         columns_number = int.from_bytes(
             images_raw[12:16], byteorder='big')
-        print('Number of columns: %d' % columns_number)
+        if self.verbose:
+            print('Number of columns: %d' % columns_number)
+        if self.verbose:
+            print("Meta data of labels file:")
 
-        print("Meta data of labels file:")
         # Confirm if the first four byteis 2049
         is_it_the_right_bytes = int.from_bytes(
             labels_raw[0:4], byteorder='big') == 2049
         # Throw exception if wrong file provided
         if is_it_the_right_bytes == False:
             raise Exception("The provided file is not MNIST labels file")
-        print('Is the magic number correct: %r' % is_it_the_right_bytes)
+        if self.verbose:
+            print('Is the magic number correct: %r' % is_it_the_right_bytes)
+
         # Number of pictures should be from bytes 4 to 8 and should be read in big endian
         label_number = int.from_bytes(
             labels_raw[4:8], byteorder='big')
-        print('Number of Labels: %d' % label_number)
+        if self.verbose:
+            print('Number of Labels: %d' % label_number)
         return pictures_number, columns_number, rows_number, label_number
 
     def loadPicturesAndLabelsToArrays(self, picture_file_content, pictures_number: int, columns_number: int, rows_number: int, pictures_offset: int, label_file_content, labels_offset: int):
@@ -159,17 +187,19 @@ class DigitRecognition:
             # Set the current model to previous model
             self.model = model
             # Train the model
-            print("Training model :", model)
+            print("\nTraining model :", model)
             model.fit(self.train_images, self.train_labels)
-            print("Predicting")
-            # Predict test data
-            pred = model.predict(
-                self.test_images[0: 100] if limited == True else self.test_images)
-            print("Calculating accuracy score")
-            # Calculate accuracy
-            acc_knn = accuracy_score(
-                self.test_labels[0: 100] if limited == True else self.test_labels, pred)
-            print("Model prediction accuracy: %f" % acc_knn)
+            print("Model trained")
+            if self.load_test_data and self.check_accuracy:
+                print("Predicting")
+                # Predict test data
+                pred = model.predict(
+                    self.test_images[0: 100] if limited == True else self.test_images)
+                print("Calculating accuracy score")
+                # Calculate accuracy
+                acc_knn = accuracy_score(
+                    self.test_labels[0: 100] if limited == True else self.test_labels, pred)
+                print("Model prediction accuracy: %f" % acc_knn)
         else:
             print("Provided model does not have predict method!")
 
@@ -200,7 +230,7 @@ class DigitRecognition:
         return i_arr
 
 
-dr = DigitRecognition()
+dr = DigitRecognition(False, False, False)
 dr.loadRawFiles()
 dr.readTrainingAndTestData()
 dr.prepareMachineLearningModel(KNeighborsClassifier(), True)
