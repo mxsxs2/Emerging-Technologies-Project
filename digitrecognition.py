@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
+from PIL import Image, ImageOps
+import matplotlib.pyplot as plt
 
 
 class DigitRecognition:
@@ -185,10 +187,23 @@ class DigitRecognition:
             raise Exception(
                 "Call prepareMachineLearningModel before predictWithPreviousModel")
 
+    def imageAsArray(self, image_name: str):
+        """
+        Reads in a picture from a file and return it as a 784 size pixel array consiting with numbers from 0 to 1
+        """
+        # Open the image and convert to gray scale and finally invert it so it maches with the training data set
+        i = ImageOps.invert(Image.open(image_name).convert('L'))
+        # Resize the image the same size as the training images
+        i = i.resize((28, 28))
+        # Convert to array, flaten it out and normalise it
+        i_arr = np.asarray(i).reshape(784)/255
+        return i_arr
+
 
 dr = DigitRecognition()
 dr.loadRawFiles()
 dr.readTrainingAndTestData()
 dr.prepareMachineLearningModel(KNeighborsClassifier(), True)
-dr.predictWithPreviousModel([dr.test_images[9999]])
-print(dr.test_labels[9999])
+# dr.predictWithPreviousModel([dr.test_images[9999]])
+# print(dr.test_labels[9999])
+dr.predictWithPreviousModel([dr.imageAsArray('data/5.jpg')])
