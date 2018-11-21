@@ -6,7 +6,10 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from PIL import Image, ImageOps
-import matplotlib.pyplot as plt
+import keras as kr
+import sklearn.preprocessing as pre
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPooling2D
 
 
 class DigitRecognition:
@@ -46,11 +49,11 @@ class DigitRecognition:
                 print("Predicting")
                 # Predict test data
                 pred = model.predict(
-                    self.test_images[0: 100] if limited == True else self.test_images)
+                    self.test_images[0: 500] if limited == True else self.test_images)
                 print("Calculating accuracy score")
                 # Calculate accuracy
                 acc_knn = accuracy_score(
-                    self.test_labels[0: 100] if limited == True else self.test_labels, pred)
+                    self.test_labels[0: 500] if limited == True else self.test_labels, pred)
                 print("Model prediction accuracy: %f" % acc_knn)
         else:
             print("Provided model does not have predict method!")
@@ -78,8 +81,7 @@ class DigitRecognition:
         # Resize the image the same size as the training images
         i = i.resize((28, 28))
         # Convert to array, flaten it out and normalise it
-        i_arr = np.asarray(i).reshape(784)/255
-        return i_arr
+        return np.asarray(i).reshape(784)/255
 
     def __openOrDownloadAndOpenGzipFile(self, file_name: str, url: str)->str:
         """
@@ -231,10 +233,33 @@ class DigitRecognition:
             i += columns_number*rows_number
         return pictures, labels
 
+    def setup_keras(self):
+        # Create model
+        self.model = kr.models.Sequential()
+        # Add input layer
+        self.model.add(Dense(1568, activation='relu', input_dim=784))
+        # Add output layer
+        self.model.add(Dense(10, activation='softmax'))
+        # Compile the model
+        self.model.compile(loss='categorical_crossentropy',
+                           optimizer='adadelta',
+                           metrics=['accuracy'])
+        # Convert the trainig labels to a binay matrix
+        train_labels = kr.utils.to_categorical(self.train_labels, 10)
+        # Train the model
+        self.model.fit(self.train_images, train_labels,
+                       epochs=11, batch_size=128)
+        # Convert the test labels to a binay matrix
+        test_labels = kr.utils.to_categorical(self.test_labels, 10)
+        # Evaluate the code by testing
+        print(self.model.evaluate(
+            self.test_images, test_labels))
+
 
 #dr = DigitRecognition(False, False, False)
-dr = DigitRecognition(True, True, True)
-dr.prepareMachineLearningModel(KNeighborsClassifier(), True)
+dr = DigitRecognition(False, True, True)
+dr.setup_keras()
+#dr.prepareMachineLearningModel(KNeighborsClassifier(n_jobs=4), True)
 # dr.predictWithPreviousModel([dr.test_images[9999]])
-# print(dr.test_labels[9999])
-dr.predictWithPreviousModel([dr.imageAsArray('data/5.jpg')])
+print(np.argmax(dr.model.predict(dr.imageAsArray('data/5.jpg').reshape(1, 784))))
+# dr.predictWithPreviousModel(dr.imageAsArray('data/5.jpg'))
