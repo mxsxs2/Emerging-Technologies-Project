@@ -1,36 +1,97 @@
+# Import gzip to unzip the data files
 import gzip
+# Import io to readt the files by byte
 import io
+# Import url open to download the files
 from urllib.request import urlopen
+# Import pathlib for file opener
 from pathlib import Path
+# Import numpy for array operations
 import numpy as np
+# Import accuracy_core got the the accuracy of the classification methords
 from sklearn.metrics import accuracy_score
+# Import KNN as an alternative classifier
 from sklearn.neighbors import KNeighborsClassifier
+# Import image operations libraries
 from PIL import Image, ImageOps
+# Import keras for custom neuronetwork classification
 import keras as kr
+# Import preprocessing for binaryarray conversion
 import sklearn.preprocessing as pre
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
+# Import keras layers for the neuronetwork
+from keras.layers import Dense, Dropout
+# Import argparse for system arguments
+import argparse
 
 
 class DigitRecognition:
 
-    def __init__(self, verbose: bool = True, load_test_data: bool = True, check_accuracy: bool = True):
+    def __init__(self, verbose: bool = False, modelName: str = 'keras', limit: bool = False, check_accuracy: bool = True, load_test_data: bool = True):
         """
         Constructor of class.
         Loads the training and test files
         verbose: extra details are printed about the files
+        modelName: the model to be used for classification
+        limit: to limit the training and test dataset
         load_test_data: to load the validation data into memory or not
         check_accuracy: to check the accuracy of the machine learning method or not
         """
         self.verbose = verbose
         self.load_test_data = load_test_data
+        self.modelName = modelName
+        self.limit = limit
         self.check_accuracy = check_accuracy
         # Load the files
         self.__loadRawFiles()
         # Read the files into arrays
         self.__readTrainingAndTestData()
+        # Prepare the model and execute it
+        self.__selectModelAndRun()
 
-    def prepareMachineLearningModel(self, model, limited: bool):
+    def recogniseNumberFromPicture(self, image):
+        """
+        Tries to predict a number from a image
+        """
+
+        print(self.modelName)
+
+        # Convert image to array
+        pa = self.imageAsArray(image)
+        # Predict with keras
+        if self.modelName == 'keras':
+            print('Prediced: %d' % np.argmax(self.__predictWithPreviousModel(
+                pa.reshape(1, 784))), " for image ", image)
+
+        # Predict with knn
+        if self.modelName == 'knn':
+            print("Predicted: ", self.__predictWithPreviousModel(
+                [pa]), " for image ", image)
+
+    def imageAsArray(self, image_name: str):
+        """
+        Reads in a image from a file and return it as a 784 size pixel array consiting with numbers from 0 to 1
+        """
+        # Open the image and convert to gray scale and finally invert it so it maches with the training data set
+        i = ImageOps.invert(Image.open(image_name).convert('L'))
+        # Resize the image the same size as the training images
+        i = i.resize((28, 28))
+        # Convert to array, flaten it out and normalise it
+        return np.asarray(i).reshape(784)/255
+
+    def __predictWithPreviousModel(self, toBePredicted):
+        """
+        Tryes to predict a number from the input.
+        If there a model is not set yet. It raises and exception
+        """
+        # Check if a model was loaded
+        if hasattr(self, 'model'):
+            predicted = self.model.predict(toBePredicted)
+            return predicted
+        else:
+            raise Exception(
+                "Call __prepareMachineLearningModel before predictWithPreviousModel")
+
+    def __prepareMachineLearningModel(self, model, limited: bool):
         """
         Trains a machine learnong model and calculates accuracy score.
         Prediction is done with 100 test items if limited is on.
@@ -43,7 +104,8 @@ class DigitRecognition:
             self.model = model
             # Train the model
             print("\nTraining model :", model)
-            model.fit(self.train_images, self.train_labels)
+            model.fit(self.train_images[0: 500] if limited == True else self.train_images,
+                      self.train_labels[0: 500] if limited == True else self.train_labels)
             print("Model trained")
             if self.load_test_data and self.check_accuracy:
                 print("Predicting")
@@ -57,31 +119,6 @@ class DigitRecognition:
                 print("Model prediction accuracy: %f" % acc_knn)
         else:
             print("Provided model does not have predict method!")
-
-    def predictWithPreviousModel(self, toBePredicted):
-        """
-        Tryes to predict a number from the input.
-        If there a model is not set yet. It raises and exception
-        """
-        # Check if a model was loaded
-        if hasattr(self, 'model'):
-            predicted = self.model.predict(toBePredicted)
-            print("Predicted: ", predicted)
-            return predicted
-        else:
-            raise Exception(
-                "Call prepareMachineLearningModel before predictWithPreviousModel")
-
-    def imageAsArray(self, image_name: str):
-        """
-        Reads in a picture from a file and return it as a 784 size pixel array consiting with numbers from 0 to 1
-        """
-        # Open the image and convert to gray scale and finally invert it so it maches with the training data set
-        i = ImageOps.invert(Image.open(image_name).convert('L'))
-        # Resize the image the same size as the training images
-        i = i.resize((28, 28))
-        # Convert to array, flaten it out and normalise it
-        return np.asarray(i).reshape(784)/255
 
     def __openOrDownloadAndOpenGzipFile(self, file_name: str, url: str)->str:
         """
@@ -135,38 +172,38 @@ class DigitRecognition:
         Reads the images and labels into arrays
         """
         # Get det images and label meta data
-        pictures_number, columns_number, rows_number, label_number = self.__getImageAndLabelMetaData(
+        images_number, columns_number, rows_number, label_number = self.__getImageAndLabelMetaData(
             images_raw, labels_raw)
         # Check if the numbers of images and labels match
-        if pictures_number != label_number:
-            raise Exception("The number of pictures and labels does not mach!")
+        if images_number != label_number:
+            raise Exception("The number of images and labels does not mach!")
         # Read the images and labels into arrays
-        images, labels = self.__loadPicturesAndLabelsToArrays(
-            images_raw, pictures_number, columns_number, rows_number, 16, labels_raw, 8)
+        images, labels = self.__loadimagesAndLabelsToArrays(
+            images_raw, images_number, columns_number, rows_number, 16, labels_raw, 8)
 
-        return images, labels, pictures_number
+        return images, labels, images_number
 
     def __getImageAndLabelMetaData(self, images_raw, labels_raw):
         """
         Checks if the magic numbers are correct and reads in the first set of bites of the files.
         """
         if self.verbose:
-            print("Meta data of pictures file:")
+            print("Meta data of images file:")
 
         # Confirm if the first four byteis 2051
         is_it_the_right_bytes = int.from_bytes(
             images_raw[0:4], byteorder='big') == 2051
         # Throw exception if wrong file provided
         if is_it_the_right_bytes == False:
-            raise Exception("The provided file is not MNIST pictures file")
+            raise Exception("The provided file is not MNIST images file")
         if self.verbose:
             print('Is the magic number correct: %r' % is_it_the_right_bytes)
 
-        # Number of pictures should be from bytes 4 to 8 and should be read in big endian
-        pictures_number = int.from_bytes(
+        # Number of images should be from bytes 4 to 8 and should be read in big endian
+        images_number = int.from_bytes(
             images_raw[4:8], byteorder='big')
         if self.verbose:
-            print('Number of pictures: %d' % pictures_number)
+            print('Number of images: %d' % images_number)
 
         # Number of rows should be from 8 to 12
         rows_number = int.from_bytes(
@@ -191,53 +228,53 @@ class DigitRecognition:
         if self.verbose:
             print('Is the magic number correct: %r' % is_it_the_right_bytes)
 
-        # Number of pictures should be from bytes 4 to 8 and should be read in big endian
+        # Number of images should be from bytes 4 to 8 and should be read in big endian
         label_number = int.from_bytes(
             labels_raw[4:8], byteorder='big')
         if self.verbose:
             print('Number of Labels: %d' % label_number)
-        return pictures_number, columns_number, rows_number, label_number
+        return images_number, columns_number, rows_number, label_number
 
-    def __loadPicturesAndLabelsToArrays(self, picture_file_content, pictures_number: int, columns_number: int, rows_number: int, pictures_offset: int, label_file_content, labels_offset: int):
+    def __loadimagesAndLabelsToArrays(self, image_file_content, images_number: int, columns_number: int, rows_number: int, images_offset: int, label_file_content, labels_offset: int):
         """
-        Loads a set of pictures and labels into two arrays.
-        The number of pictures and labels has to match
-        The method does not reads in each picture flat as columns_number*rows_number.
+        Loads a set of images and labels into two arrays.
+        The number of images and labels has to match
+        The method does not reads in each image flat as columns_number*rows_number.
         """
-        # Set up an array for picture storage
-        pictures = np.zeros(
-            (pictures_number, columns_number*rows_number), dtype=float)
+        # Set up an array for image storage
+        images = np.zeros(
+            (images_number, columns_number*rows_number), dtype=float)
         labels = np.zeros(
-            (pictures_number), dtype=int)
-        # The current picture 1-59999
+            (images_number), dtype=int)
+        # The current image 1-59999
         current_image = 0
         # The iteration index
-        i = pictures_offset
+        i = images_offset
         print("Converting images and labels to array. Number of items: %d" %
-              pictures_number)
+              images_number)
         # Run a loop until the end of the byte array
-        while i < len(picture_file_content):
+        while i < len(image_file_content):
             # Convert a row to float types and normalise it for better machine learning performance
             a = np.frombuffer(
-                picture_file_content[i:i+columns_number*rows_number], dtype=np.uint8)
-            # Set the current picture
-            pictures[current_image] = a
+                image_file_content[i:i+columns_number*rows_number], dtype=np.uint8)
+            # Set the current image
+            images[current_image] = a
             # Normalise the numbers to be between 0 and 1
-            pictures[current_image] /= 255
+            images[current_image] /= 255
             # Read in the label for this image
             labels[current_image] = int.from_bytes(
                 label_file_content[current_image+labels_offset:current_image+labels_offset+1], byteorder='big')
-            # Go to the next picture
+            # Go to the next image
             current_image += 1
             # Increase the counter with the size of the columns
             i += columns_number*rows_number
-        return pictures, labels
+        return images, labels
 
-    def setup_keras(self):
+    def __setupKeras(self):
         # Create model
         self.model = kr.models.Sequential()
         # Add input layer
-        self.model.add(Dense(1568, activation='relu', input_dim=784))
+        self.model.add(Dense(1580, activation='relu', input_dim=784))
         # Add output layer
         self.model.add(Dense(10, activation='softmax'))
         # Compile the model
@@ -248,18 +285,58 @@ class DigitRecognition:
         train_labels = kr.utils.to_categorical(self.train_labels, 10)
         # Train the model
         self.model.fit(self.train_images, train_labels,
-                       epochs=11, batch_size=128)
-        # Convert the test labels to a binay matrix
-        test_labels = kr.utils.to_categorical(self.test_labels, 10)
-        # Evaluate the code by testing
-        print(self.model.evaluate(
-            self.test_images, test_labels))
+                       epochs=1, batch_size=128)
+        if self.load_test_data and self.check_accuracy:
+            # Convert the test labels to a binay matrix
+            test_labels = kr.utils.to_categorical(self.test_labels, 10)
+            # Evaluate the code by testing
+            print(self.model.evaluate(
+                self.test_images, test_labels))
+
+    def __selectModelAndRun(self):
+        """
+        Selects the model to train up and runs training
+        """
+
+        print('\nModel: ', self.modelName)
+
+        # Set up the model if it is keras
+        if self.modelName == 'keras':
+            self.__setupKeras()
+
+        print('Training limit is active.')
+
+        # Set up the model if it knn
+        if self.modelName == 'knn':
+            self.__prepareMachineLearningModel(
+                KNeighborsClassifier(n_jobs=4), self.limit)
 
 
-#dr = DigitRecognition(False, False, False)
-dr = DigitRecognition(False, True, True)
-dr.setup_keras()
-#dr.prepareMachineLearningModel(KNeighborsClassifier(n_jobs=4), True)
-# dr.predictWithPreviousModel([dr.test_images[9999]])
-print(np.argmax(dr.model.predict(dr.imageAsArray('data/5.jpg').reshape(1, 784))))
-# dr.predictWithPreviousModel(dr.imageAsArray('data/5.jpg'))
+# Add description
+parser = argparse.ArgumentParser(
+    description='Recognize handwritten digits on a image')
+# Add command line arguments
+parser.add_argument('--model', choices=['keras', 'knn'], default='keras',
+                    help='The model to use. One of: kreas, knn. Default is keras')
+parser.add_argument('--verbose', action='store_const',
+                    const=True, default=False, help='If flag exist, extra informations is provided about MNIST files')
+parser.add_argument('--checkaccuracy',
+                    action='store_const', const=True, default=False, help='If flag exist, the trained model will be checked for accuracy ')
+parser.add_argument('--limit', action='store_const',
+                    const=True, default=False, help='If flag exist, the model will use only 1000 records to train and test. This does not apply for keras!')
+parser.add_argument(
+    '--image', help='Path for an image to recognise the number from')
+# Parse the models
+args = parser.parse_args()
+
+
+# Create a new object instance
+dr = DigitRecognition(args.verbose, args.model,
+                      args.limit, args.checkaccuracy, True)
+
+# Recognise a number from a image if a path is present
+
+image = args.image
+
+if image != None:
+    dr.recogniseNumberFromPicture(image)
