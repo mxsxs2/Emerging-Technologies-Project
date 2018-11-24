@@ -274,18 +274,19 @@ class DigitRecognition:
         # Create model
         self.model = kr.models.Sequential()
         # Add input layer
-        self.model.add(Dense(1580, activation='relu', input_dim=784))
+        self.model.add(Dense(784, activation='relu', input_dim=784))
         # Add output layer
         self.model.add(Dense(10, activation='softmax'))
         # Compile the model
         self.model.compile(loss='categorical_crossentropy',
-                           optimizer='adadelta',
+                           optimizer='rmsprop',
                            metrics=['accuracy'])
         # Convert the trainig labels to a binay matrix
         train_labels = kr.utils.to_categorical(self.train_labels, 10)
+
         # Train the model
         self.model.fit(self.train_images, train_labels,
-                       epochs=1, batch_size=128)
+                       epochs=20, batch_size=128)
         if self.load_test_data and self.check_accuracy:
             # Convert the test labels to a binay matrix
             test_labels = kr.utils.to_categorical(self.test_labels, 10)
