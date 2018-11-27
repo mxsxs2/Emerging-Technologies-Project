@@ -239,35 +239,12 @@ class DigitRecognition:
         """
         Loads a set of images and labels into two arrays.
         The number of images and labels has to match
-        The method does not reads in each image flat as columns_number*rows_number.
+        The method reads in each image flat as columns_number*rows_number.
         """
-        # Set up an array for image storage
-        images = np.zeros(
-            (images_number, columns_number*rows_number), dtype=float)
-        labels = np.zeros(
-            (images_number), dtype=int)
-        # The current image 1-59999
-        current_image = 0
-        # The iteration index
-        i = images_offset
-        print("Converting images and labels to array. Number of items: %d" %
-              images_number)
-        # Run a loop until the end of the byte array
-        while i < len(image_file_content):
-            # Convert a row to float types and normalise it for better machine learning performance
-            a = np.frombuffer(
-                image_file_content[i:i+columns_number*rows_number], dtype=np.uint8)
-            # Set the current image
-            images[current_image] = a
-            # Normalise the numbers to be between 0 and 1
-            images[current_image] /= 255
-            # Read in the label for this image
-            labels[current_image] = int.from_bytes(
-                label_file_content[current_image+labels_offset:current_image+labels_offset+1], byteorder='big')
-            # Go to the next image
-            current_image += 1
-            # Increase the counter with the size of the columns
-            i += columns_number*rows_number
+        images = np.frombuffer(image_file_content[images_offset:], dtype=np.uint8).reshape(
+            images_number, columns_number*rows_number)/255
+        labels = np.frombuffer(
+            label_file_content[labels_offset:], dtype=np.uint8)
         return images, labels
 
     def __setupKeras(self):
