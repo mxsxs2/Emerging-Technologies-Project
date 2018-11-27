@@ -12,6 +12,12 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 # Import KNN as an alternative classifier
 from sklearn.neighbors import KNeighborsClassifier
+# Import MLPClassifier model
+from sklearn.neural_network import MLPClassifier
+# Import Gaussian classifier
+from sklearn.naive_bayes import GaussianNB
+# Import SVC classifier
+from sklearn.svm import SVC
 # Import image operations libraries
 from PIL import Image, ImageOps
 # Import keras for custom neuronetwork classification
@@ -52,18 +58,14 @@ class DigitRecognition:
         """
         Tries to predict a number from a image
         """
-
-        print(self.modelName)
-
         # Convert image to array
         pa = self.imageAsArray(image)
         # Predict with keras
         if self.modelName == 'keras':
             print('Prediced: %d' % np.argmax(self.__predictWithPreviousModel(
                 pa.reshape(1, 784))), " for image ", image)
-
-        # Predict with knn
-        if self.modelName == 'knn':
+        else:
+            # Predict with other models
             print("Predicted: ", self.__predictWithPreviousModel(
                 [pa]), " for image ", image)
 
@@ -282,20 +284,36 @@ class DigitRecognition:
         if self.modelName == 'keras':
             self.__setupKeras()
 
-        print('Training limit is active.')
+        if self.limit == True:
+            print('Training limit is active.')
 
         # Set up the model if it knn
         if self.modelName == 'knn':
             self.__prepareMachineLearningModel(
                 KNeighborsClassifier(n_jobs=4), self.limit)
 
+        # Set up the model if it mlpc
+        if self.modelName == 'mlpc':
+            self.__prepareMachineLearningModel(
+                MLPClassifier(alpha=1, batch_size=128, verbose=1), self.limit)
+
+        # Set up the model if it gaussian
+        if self.modelName == 'gaussian':
+            self.__prepareMachineLearningModel(
+                GaussianNB(), self.limit)
+
+        # Set up the model if it svc
+        if self.modelName == 'svc':
+            self.__prepareMachineLearningModel(
+                SVC(gamma='auto', verbose=1), self.limit)
+
 
 # Add description
 parser = argparse.ArgumentParser(
     description='Recognize handwritten digits on a image')
 # Add command line arguments
-parser.add_argument('--model', choices=['keras', 'knn'], default='keras',
-                    help='The model to use. One of: kreas, knn. Default is keras')
+parser.add_argument('--model', choices=['keras', 'knn', 'mlpc', 'gaussian', 'svc'], default='keras',
+                    help='The model to use. One of: kreas, knn, mlpc, gaussian, svc. Default is keras')
 parser.add_argument('--verbose', action='store_const',
                     const=True, default=False, help='If flag exist, extra informations is provided about MNIST files')
 parser.add_argument('--checkaccuracy',
