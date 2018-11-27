@@ -28,6 +28,12 @@ import sklearn.preprocessing as pre
 from keras.layers import Dense, Dropout
 # Import argparse for system arguments
 import argparse
+# Import walk fro dir reading
+from os import walk
+# Import is dir for checking if a value is directory
+from os.path import isdir
+# Import imghdr to determine if a file is image
+import imghdr
 
 
 class DigitRecognition:
@@ -321,7 +327,7 @@ parser.add_argument('--checkaccuracy',
 parser.add_argument('--limit', action='store_const',
                     const=True, default=False, help='If flag exist, the model will use only 1000 records to train and test. This does not apply for keras!')
 parser.add_argument(
-    '--image', help='Path for an image to recognise the number from')
+    '--image', help='Path for an image to recognise the number from. It can take a directory path with images in it. If a direcotry path is supplied the last / has to be omitted')
 # Parse the models
 args = parser.parse_args()
 
@@ -330,9 +336,24 @@ args = parser.parse_args()
 dr = DigitRecognition(args.verbose, args.model,
                       args.limit, args.checkaccuracy, True)
 
-# Recognise a number from a image if a path is present
+# Recognise a number from image(s) if a path is present
 
 image = args.image
-
+# Check if image exists
 if image != None:
-    dr.recogniseNumberFromPicture(image)
+    # Check if the path is a directory
+    if isdir(image) == True:
+        # Get files
+        for (dirpath, dirnames, filenames) in walk(image):
+            # Loop file names
+            for f in filenames:
+                # Check if file is a picture
+                if imghdr.what(image + '/'+f) != None:
+                    # Predict the number on the picture
+                    dr.recogniseNumberFromPicture(image + '/'+f)
+            break
+    else:
+        # Check if file is a picture
+        if imghdr.what(image + '/'+f) != None:
+            # Predict number on the picture
+            dr.recogniseNumberFromPicture(image)

@@ -27,11 +27,11 @@ digitrecognition.py [-h] [--model {keras,knn}] [--verbose]
 
 Optional arguments:
 *  ```-h```, ```--help```    Show this help message and exit
-*  ```--model {keras,knn}``` The model to use. One of: kreas, knn. Default is keras
+*  ```--model {keras,knn,mlpc,gaussian,svc}``` The model to use. One of: kreas, knn. Default is keras
 *  ```--verbose```           If flag exist, extra informations is provided about MNIST files
 *  ```--checkaccuracy```     If flag exist, the trained model will be checked for accuracy
 *  ```--limit```             If flag exist, the model will use only 1000 records to train and test. This does not apply for keras!
-*  ```--image```             IMAGE Path for an image to recognise the number from
+*  ```--image```             Path for an image to recognise the number from. It can take a directory path with images in it. If a direcotry path is supplied the last / has to be omitted
 
 
 ## Jupyter Notebooks
