@@ -22,7 +22,7 @@ Anaconda will install all the dependencies except `keras` and `tensorflow`.
 
 If the abowe two will not install, they are bot awailable with [Anaconda Navigator](https://anaconda.org/anaconda/anaconda-navigator) 
 # How to run the script
-digitrecognition.py [-h] [--model {keras,knn}] [--verbose]
+digitrec.py [-h] [--model {keras,knn}] [--verbose]
                            [--checkaccuracy] [--limit] [--image IMAGE]
 
 Optional arguments:
@@ -42,7 +42,7 @@ Clone this repository and in the library run ```jupyter notebook``` this will op
 ## Numpy random
 [Numpy.random](https://docs.scipy.org/doc/numpy-1.15.1/reference/routines.random.html) is a collection of methods for random number generations, permutations and number distributions created by [numpy](http://www.numpy.org/). 
 
-[Link for notebook](/notebooks/Numpy_Random.ipynb)
+[Link for notebook](/notebooks/Nnumpy-random.ipynb)
 ## Iris dataset
 The dataset is a collection of samples from three types of Iris flowers. This dataset is commonly used for statistical classification and starter machine learning projects (both supervised and unsupervised)
 
@@ -52,7 +52,7 @@ The dataset contains 150 samples evenly devided between the tree types of flower
 * petal length
 * petal width
 
-[Link for notebook](/notebooks/Iris_datatset.ipynb)
+[Link for notebook](/notebooks/iris-datatset.ipynb)
 
 [Source 1](https://en.wikipedia.org/wiki/Iris_flower_data_set)
 [Source 2](https://archive.ics.uci.edu/ml/datasets/iris)
@@ -64,10 +64,10 @@ The MNIST database is a collection of handwritten images which are used to train
 
 The training imeages file contains 60000 images and the test images file contains 10000 images. These files are in a special format therefore they have to be read byte by byte.
 
-[Link for notebook](/notebooks/MNIST_database.ipynb)
+[Link for notebook](/notebooks/mnist-dataset.ipynb)
 
 [Link for MNIST database documentation](http://yann.lecun.com/exdb/mnist/)
 ## Digit recognition
 I developed a digit recognition script to  train a choice of neuronetwork to recognize hand written numbers from images. Once the netwrok is trained it tries to predict a digit from a provided source.
 
-[Link for notebook](/notebooks/Digit_Recognition.ipynb)
+[Link for notebook](/notebooks/digit-recognition.ipynb)
