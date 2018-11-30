@@ -34,31 +34,44 @@ from os import walk
 from os.path import isdir
 # Import imghdr to determine if a file is image
 import imghdr
+# Import joblib to allow the model to be saved into a file
+from sklearn.externals import joblib
+import sys
 
 
 class DigitRecognition:
 
-    def __init__(self, verbose: bool = False, modelName: str = 'keras', limit: bool = False, check_accuracy: bool = True, load_test_data: bool = True):
+    def __init__(self, verbose: bool = False, modelName: str = 'keras', limit: bool = False, checkAccuracy: bool = True, saveModel: str = None, loadModel: str = None, loadTestData: bool = True):
         """
         Constructor of class.
         Loads the training and test files
         verbose: extra details are printed about the files
         modelName: the model to be used for classification
         limit: to limit the training and test dataset
-        load_test_data: to load the validation data into memory or not
-        check_accuracy: to check the accuracy of the machine learning method or not
+        checkAccuracy: to check the accuracy of the machine learning method or not
+        saveModel: Saves the model into a file for later use
+        loadModel: Loads an already trained model
+        loadTestData: to load the validation data into memory or not
         """
         self.verbose = verbose
-        self.load_test_data = load_test_data
+        self.loadTestData = loadTestData
         self.modelName = modelName
         self.limit = limit
-        self.check_accuracy = check_accuracy
-        # Load the files
-        self.__loadRawFiles()
-        # Read the files into arrays
-        self.__readTrainingAndTestData()
-        # Prepare the model and execute it
-        self.__selectModelAndRun()
+        self.checkAccuracy = checkAccuracy
+
+        # Load the model from a file if it is set
+        if loadModel != None and loadModel != "":
+            # Load a previously trained model
+            self.__loadModel(loadModel)
+        else:
+            # Load the files
+            self.__loadRawFiles()
+            # Read the files into arrays
+            self.__readTrainingAndTestData()
+            # Prepare the model and execute it
+            self.__selectModelAndRun()
+            # Save model to file
+            self.__saveModel(saveModel)
 
     def recogniseNumberFromPicture(self, image):
         """
@@ -75,58 +88,68 @@ class DigitRecognition:
             print("Predicted: ", self.__predictWithPreviousModel(
                 [pa]), " for image ", image)
 
-    def imageAsArray(self, image_name: str):
+    def imageAsArray(self, imageName: str):
         """
         Reads in a image from a file and return it as a 784 size pixel array consiting with numbers from 0 to 1
         """
         # Open the image and convert to gray scale and finally invert it so it maches with the training data set
-        i = ImageOps.invert(Image.open(image_name).convert('L'))
+        i = ImageOps.invert(Image.open(imageName).convert('L'))
         # Resize the image the same size as the training images
         i = i.resize((28, 28))
         # Convert to array, flaten it out and normalise it
         return np.asarray(i).reshape(784)/255
 
-    def __predictWithPreviousModel(self, toBePredicted):
+    def __saveModel(self, filename):
         """
-        Tryes to predict a number from the input.
-        If there a model is not set yet. It raises and exception
+        Saves the model into a file for later use if the file name is not empty
         """
-        # Check if a model was loaded
-        if hasattr(self, 'model'):
-            predicted = self.model.predict(toBePredicted)
-            return predicted
-        else:
-            raise Exception(
-                "Call __prepareMachineLearningModel before predictWithPreviousModel")
+        if filename != None and filename != "":
+            joblib.dump(self.model, filename)
 
-    def __prepareMachineLearningModel(self, model, limited: bool):
+    def __loadModel(self, filename):
         """
-        Trains a machine learnong model and calculates accuracy score.
-        Prediction is done with 100 test items if limited is on.
-        When limited is off then prediction will be done with 10000 items. It can take long time to finish 
+        Loads a previously trained model
         """
-        # Check if the model has precit method
-        predict = getattr(model, "predict", None)
-        if callable(predict):
-            # Set the current model to previous model
-            self.model = model
-            # Train the model
-            print("\nTraining model :", model)
-            model.fit(self.train_images[0: 500] if limited == True else self.train_images,
-                      self.train_labels[0: 500] if limited == True else self.train_labels)
-            print("Model trained")
-            if self.load_test_data and self.check_accuracy:
-                print("Predicting")
-                # Predict test data
-                pred = model.predict(
-                    self.test_images[0: 500] if limited == True else self.test_images)
-                print("Calculating accuracy score")
-                # Calculate accuracy
-                acc_knn = accuracy_score(
-                    self.test_labels[0: 500] if limited == True else self.test_labels, pred)
-                print("Model prediction accuracy: %f" % acc_knn)
-        else:
-            print("Provided model does not have predict method!")
+        try:
+            # Try to load the model
+            self.model = joblib.load(filename)
+            # Check model type
+            if isinstance(self.model, kr.models.Sequential) == True:
+                self.modelName = "keras"
+            # Set up the model if it knn
+            if isinstance(self.model, KNeighborsClassifier) == True:
+                self.modelName = "knn"
+            # Set up the model if it mlpc
+            if isinstance(self.model, MLPClassifier) == True:
+                self.modelName = "mlpc"
+            # Set up the model if it gaussian
+            if isinstance(self.model, GaussianNB) == True:
+                self.modelName = "gaussian"
+            # Set up the model if it svc
+            if isinstance(self.model, SVC) == True:
+                self.modelName = "svc"
+
+            print("Using preloaded model: ", self.modelName)
+
+        except FileNotFoundError:
+            print(filename, "does not exist!")
+            # Terminate
+            sys.exit()
+
+    def __loadRawFiles(self)->None:
+        """
+        Unzip the training and test data
+        """
+        self.train_images = self.__openOrDownloadAndOpenGzipFile(
+            'data/train-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz')
+        self.train_labels = self.__openOrDownloadAndOpenGzipFile(
+            'data/train-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz')
+        if self.loadTestData:
+            self.test_images = self.__openOrDownloadAndOpenGzipFile(
+                'data/t10k-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz')
+            self.test_labels = self.__openOrDownloadAndOpenGzipFile(
+                'data/t10k-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz')
+        print("Data files loaded.")
 
     def __openOrDownloadAndOpenGzipFile(self, file_name: str, url: str)->str:
         """
@@ -148,21 +171,6 @@ class DigitRecognition:
         with gzip.open(io.BytesIO(to_read), 'rb') as f:
             return f.read()
 
-    def __loadRawFiles(self)->None:
-        """
-        Unzip the training and test data
-        """
-        self.train_images = self.__openOrDownloadAndOpenGzipFile(
-            'data/train-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz')
-        self.train_labels = self.__openOrDownloadAndOpenGzipFile(
-            'data/train-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz')
-        if self.load_test_data:
-            self.test_images = self.__openOrDownloadAndOpenGzipFile(
-                'data/t10k-images-idx3-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz')
-            self.test_labels = self.__openOrDownloadAndOpenGzipFile(
-                'data/t10k-labels-idx1-ubyte.gz', 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz')
-        print("Data files loaded.")
-
     def __readTrainingAndTestData(self):
         """
         Reads in both training and test data
@@ -170,7 +178,7 @@ class DigitRecognition:
         print("\nReading training images and labels into arrays")
         self.train_images, self.train_labels, train_item_number = self.__readImagesAndLabels(
             self.train_images, self.train_labels)
-        if self.load_test_data:
+        if self.loadTestData:
             print("\nReading test images and labels into arrays")
             self.test_images, self.test_labels, test_item_number = self.__readImagesAndLabels(
                 self.test_images, self.test_labels)
@@ -255,30 +263,6 @@ class DigitRecognition:
             label_file_content[labels_offset:], dtype=np.uint8)
         return images, labels
 
-    def __setupKeras(self):
-        # Create model
-        self.model = kr.models.Sequential()
-        # Add input layer
-        self.model.add(Dense(784, activation='relu', input_dim=784))
-        # Add output layer
-        self.model.add(Dense(10, activation='softmax'))
-        # Compile the model
-        self.model.compile(loss='categorical_crossentropy',
-                           optimizer='rmsprop',
-                           metrics=['accuracy'])
-        # Convert the trainig labels to a binay matrix
-        train_labels = kr.utils.to_categorical(self.train_labels, 10)
-
-        # Train the model
-        self.model.fit(self.train_images, train_labels,
-                       epochs=20, batch_size=128)
-        if self.load_test_data and self.check_accuracy:
-            # Convert the test labels to a binay matrix
-            test_labels = kr.utils.to_categorical(self.test_labels, 10)
-            # Evaluate the code by testing
-            print(self.model.evaluate(
-                self.test_images, test_labels))
-
     def __selectModelAndRun(self):
         """
         Selects the model to train up and runs training
@@ -313,6 +297,72 @@ class DigitRecognition:
             self.__prepareMachineLearningModel(
                 SVC(gamma='auto', verbose=1), self.limit)
 
+    def __setupKeras(self):
+        # Create model
+        self.model = kr.models.Sequential()
+        # Add input layer
+        self.model.add(Dense(784, activation='relu', input_dim=784))
+        # Add output layer
+        self.model.add(Dense(10, activation='softmax'))
+        # Compile the model
+        self.model.compile(loss='categorical_crossentropy',
+                           optimizer='rmsprop',
+                           metrics=['accuracy'])
+        # Convert the trainig labels to a binay matrix
+        train_labels = kr.utils.to_categorical(self.train_labels, 10)
+
+        # Train the model
+        self.model.fit(self.train_images, train_labels,
+                       epochs=20, batch_size=128)
+        if self.loadTestData and self.checkAccuracy:
+            # Convert the test labels to a binay matrix
+            test_labels = kr.utils.to_categorical(self.test_labels, 10)
+            # Evaluate the code by testing
+            print(self.model.evaluate(
+                self.test_images, test_labels))
+
+    def __prepareMachineLearningModel(self, model, limited: bool):
+        """
+        Trains a machine learnong model and calculates accuracy score.
+        Prediction is done with 100 test items if limited is on.
+        When limited is off then prediction will be done with 10000 items. It can take long time to finish 
+        """
+        # Check if the model has precit method
+        predict = getattr(model, "predict", None)
+        if callable(predict):
+            # Set the current model to previous model
+            self.model = model
+            # Train the model
+            print("\nTraining model :", model)
+            model.fit(self.train_images[0: 500] if limited == True else self.train_images,
+                      self.train_labels[0: 500] if limited == True else self.train_labels)
+            print("Model trained")
+            if self.loadTestData and self.checkAccuracy:
+                print("Predicting")
+                # Predict test data
+                pred = model.predict(
+                    self.test_images[0: 500] if limited == True else self.test_images)
+                print("Calculating accuracy score")
+                # Calculate accuracy
+                acc_knn = accuracy_score(
+                    self.test_labels[0: 500] if limited == True else self.test_labels, pred)
+                print("Model prediction accuracy: %f" % acc_knn)
+        else:
+            print("Provided model does not have predict method!")
+
+    def __predictWithPreviousModel(self, toBePredicted):
+        """
+        Tryes to predict a number from the input.
+        If there a model is not set yet. It raises and exception
+        """
+        # Check if a model was loaded
+        if hasattr(self, 'model'):
+            predicted = self.model.predict(toBePredicted)
+            return predicted
+        else:
+            raise Exception(
+                "Call __prepareMachineLearningModel before predictWithPreviousModel")
+
 
 # Add description
 parser = argparse.ArgumentParser(
@@ -327,14 +377,16 @@ parser.add_argument('--checkaccuracy',
 parser.add_argument('--limit', action='store_const',
                     const=True, default=False, help='If flag exist, the model will use only 1000 records to train and test. This does not apply for keras!')
 parser.add_argument(
+    '--savemodel', help='Save the trained model into a file to speed up the application run for next time.')
+parser.add_argument(
+    '--loadmodel', help='Load trained model from file. This will disregard the --model attribute')
+parser.add_argument(
     '--image', help='Path for an image to recognise the number from. It can take a directory path with images in it. If a direcotry path is supplied the last / has to be omitted')
 # Parse the models
 args = parser.parse_args()
-
-
 # Create a new object instance
 dr = DigitRecognition(args.verbose, args.model,
-                      args.limit, args.checkaccuracy, True)
+                      args.limit, args.checkaccuracy, args.savemodel, args.loadmodel, True if args.loadmodel != None or args.loadmodel != "" else False)
 
 # Recognise a number from image(s) if a path is present
 

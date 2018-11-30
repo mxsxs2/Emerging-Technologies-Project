@@ -31,6 +31,8 @@ Optional arguments:
 *  ```--verbose```           If flag exist, extra informations is provided about MNIST files
 *  ```--checkaccuracy```     If flag exist, the trained model will be checked for accuracy
 *  ```--limit```             If flag exist, the model will use only 1000 records to train and test. This does not apply for keras!
+*  ```--savemodel```         Save the trained model into a file to speed up the application run for next time.
+*  ```--loadmodel```         Load trained model from file. This will disregard the `--model` attribute
 *  ```--image```             Path for an image to recognise the number from. It can take a directory path with images in it. If a direcotry path is supplied the last / has to be omitted
 
 The output of the application can be piped into a file the following way:
