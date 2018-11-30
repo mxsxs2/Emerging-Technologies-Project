@@ -9,7 +9,7 @@ Set of notebooks of Python numpy.random, MNIST, Iris and Digit recognition scrip
   * [Iris dataset](#Iris-dataset)
   * [MNIST database](#MNIST-database)
   * [Notebook explaining the digit recognition script](#Digit-recognition)
-# Prerequisite
+## Prerequisite
 This project relies on python 3.6. The easiest way to acquire python and all the dependecnies for the notebooks and digit recognition script is to download anaconda from [here](https://www.anaconda.com/download/).
 
 The project was developed on windows. It works on windows and has not been tested on any other platform.
@@ -21,7 +21,7 @@ Anaconda will install all the dependencies except `keras` and `tensorflow`.
     * [Keras] is the deep learning library used for the digit recognition script.  
 
 If the abowe two will not install, they are bot awailable with [Anaconda Navigator](https://anaconda.org/anaconda/anaconda-navigator) 
-# How to run the script
+## How to run the script
 digitrec.py [-h] [--model {keras,knn}] [--verbose]
                            [--checkaccuracy] [--limit] [--image IMAGE]
 
@@ -38,6 +38,7 @@ Optional arguments:
 The output of the application can be piped into a file the following way:
 ```python digitrec.py > output.txt```
 
+[Link for description notebook](/notebooks/digit-recognition.ipynb)
 ## Jupyter Notebooks
 Jupyter notebook is a simple way to present code snippets with explanations. It supports markdown, latex and various programming languages. The default language is python3.
 ### Open notebooks

@@ -164,6 +164,10 @@ class DigitRecognition:
             print('Downloading %s' % url)
             # Download and read if not
             to_read = urlopen(url).read()
+            # Save the file
+            sfile = open(file_name, 'wb')
+            sfile.write(to_read)
+            sfile.close()
         else:
             # Read if it does
             to_read = file.read_bytes()
