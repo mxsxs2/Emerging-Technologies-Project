@@ -33,6 +33,8 @@ Optional arguments:
 *  ```--limit```             If flag exist, the model will use only 1000 records to train and test. This does not apply for keras!
 *  ```--image```             Path for an image to recognise the number from. It can take a directory path with images in it. If a direcotry path is supplied the last / has to be omitted
 
+The output of the application can be piped into a file the following way:
+```python digitrec.py > output.txt```
 
 ## Jupyter Notebooks
 Jupyter notebook is a simple way to present code snippets with explanations. It supports markdown, latex and various programming languages. The default language is python3.
